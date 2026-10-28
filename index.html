@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <!-- 360px 폭으로 배치한 화면을 휴대폰 폭에 맞게 그대로 확대·축소 (어느 휴대폰이든 같은 비율) -->
+  <meta name="viewport" content="width=360">
+  <title>추리 퍼즐</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1 id="title"></h1>
+    <div id="hearts" class="hearts"></div>
+  </header>
+  <main class="board">
+    <table id="grid" class="grid"></table>
+  </main>
+  <div class="clue-bar">
+    <span class="clue-count"><span id="clue-fill" class="clue-fill"></span><span id="clue-count-text" class="clue-count-text"></span></span>
+  </div>
+  <section class="clues-area">
+    <div id="clues" class="clues"></div>
+  </section>
+  <!-- 시작 화면 -->
+  <div id="start" class="start" hidden>
+    <div class="start-burst"></div>
+    <div class="start-ground"></div>
+    <div id="start-stickers"></div>
+    <div class="start-logo">
+      <span class="start-ribbon">추리 퍼즐</span>
+      <h1 id="start-title" class="start-title"></h1>
+      <svg class="start-glass" viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M40 42l14 14" stroke="#4a3b33" stroke-width="11" stroke-linecap="round"/>
+        <path d="M40 42l14 14" stroke="#2f3652" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="26" cy="26" r="19" fill="#bfeaff" stroke="#4a3b33" stroke-width="3"/>
+        <circle cx="26" cy="26" r="16" fill="none" stroke="#ffc83d" stroke-width="5"/>
+        <path d="M17 22a10 10 0 0 1 9-9" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <button type="button" id="start-button" class="start-button">시작하기</button>
+  </div>
+
+  <!-- 보기 창: 탭한 칸 바로 밑에 작게 뜸. 바깥을 탭하면 닫힘 -->
+  <div id="picker" class="picker" hidden>
+    <div id="picker-pop" class="pop"></div>
+  </div>
+
+  <!-- 완료 축하 화면: 인물 카드가 가운데 판으로 모임 -->
+  <div id="win" class="win" hidden>
+    <div class="rays"></div>
+    <div id="confetti" class="confetti"></div>
+    <div class="win-content">
+      <h2 id="win-title" class="win-title">모두 맞혔어요!</h2>
+      <div id="win-cards" class="win-panel"></div>
+      <!-- 응모: stage.js의 submitUrl이 있을 때만 보임 -->
+      <form id="entry" class="entry" hidden novalidate>
+        <div class="entry-row">
+          <label>학년
+            <select id="entry-grade">
+              <option value="">-</option>
+              <option>1</option><option>2</option><option>3</option>
+              <option>4</option><option>5</option><option>6</option>
+            </select>
+          </label>
+          <label>반 <input id="entry-class" inputmode="numeric" maxlength="2"></label>
+          <label>번호 <input id="entry-number" inputmode="numeric" maxlength="2"></label>
+        </div>
+        <label class="entry-wide">이름 <input id="entry-name" maxlength="10" autocomplete="off"></label>
+        <label class="entry-wide">내가 뽑혀야 하는 이유
+          <textarea id="entry-reason" maxlength="100" rows="3"></textarea>
+          <span id="entry-count" class="entry-count">0/100</span>
+        </label>
+        <p id="entry-message" class="entry-message"></p>
+        <button type="submit" id="entry-submit" class="entry-submit">제출하기</button>
+        <p id="entry-notice" class="entry-notice"></p>
+      </form>
+      <button type="button" id="win-retry" class="retry win-retry">다시 도전</button>
+    </div>
+  </div>
+
+  <!-- 실패 화면 -->
+  <div id="overlay" class="overlay" hidden>
+    <div class="overlay-box">
+      <p class="fail-title">하트를 모두 잃었어요</p>
+      <div id="fail-hearts" class="fail-hearts"></div>
+      <p class="fail-text">처음부터 다시 도전해 보세요!</p>
+      <button type="button" id="retry" class="fail-retry">다시 도전</button>
+    </div>
+  </div>
+
+  <div id="error" class="error" hidden></div>
+
+  <script src="stage.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
