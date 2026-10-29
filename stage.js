@@ -14,13 +14,14 @@
 // images     : (선택) 값 → 그림 파일. 그림은 images 폴더에 넣음. 적지 않은 값은 글자만 보임
 // submitUrl  : (선택) 다 맞힌 뒤 응모 내용을 보낼 구글 시트 웹 앱 주소 (구글시트_설치안내.md 참고).
 //              비워 두면 응모 칸이 나오지 않음
+// classesPerGrade : 학년별 반 수 [1학년, 2학년, ...]. 응모 칸의 반 선택 목록을 만듦 (submitUrl이 있으면 필요)
 // submitNotice : 응모 칸 아래 개인정보 안내 문구
 // ※ 하트는 3개로 고정이라 여기서 정하지 않음
 const STAGE = {
   title: "돌아온 세교퀴즈",
   people: ["장소 1", "장소 2", "장소 3", "장소 4"],   // 어디인지는 학생이 단서로 짐작
   avatars: ["images/place-field.svg", "images/place-solbitchae.svg", "images/place-council.svg", "images/place-library.svg"],   // 얼굴 대신 장소 그림
-  reveal: ["운동장", "솔빛채", "학생 자치회실", "꿈드리 도서관"],   // 다 맞힌 뒤 축하 화면에서 알려 줄 진짜 이름 (people 순서)
+  reveal: ["운동장", "솔빛채", "학생자치회실", "꿈드리 도서관"],   // 다 맞힌 뒤 축하 화면에서 알려 줄 진짜 이름 (people 순서)
   categories: [
     { name: "크기", options: ["3등", "1등", "4등", "2등"], label: true },   // label: 칸에도 그림 밑에 이름을 씀
     { name: "볼 수 있는 것", options: ["의장봉", "책", "학교기", "피구공"] },
@@ -66,6 +67,7 @@ const STAGE = {
     "학생 회의": "images/meeting.svg",
     "연체 지우개": "images/eraser.svg",
   },
+  classesPerGrade: [2, 3, 5, 4, 5, 5],   // 1학년 2반까지, 2학년 3반까지, 3학년 5반, 4학년 4반, 5학년 5반, 6학년 5반 (2026학년도)
   submitUrl: "https://script.google.com/macros/s/AKfycbz_x0Cib2PzTywhUGOhNDVURlebGGBWbbS3KZxkYiWe3rnTOL63d4qahE2jugc7C_qo/exec",
   submitNotice: "적은 내용은 행사 추첨에만 쓰고, 행사가 끝나면 지워요.",
 };

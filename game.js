@@ -260,6 +260,12 @@ function validateStage() {
   if (STAGE.reveal && STAGE.reveal.length !== COLS) {
     errors.push(`reveal의 이름 개수(${STAGE.reveal.length})가 people 수(${COLS})와 달라요.`);
   }
+  if (STAGE.submitUrl) {
+    const grades = STAGE.classesPerGrade;
+    if (!Array.isArray(grades) || !grades.length || grades.some((n) => !Number.isInteger(n) || n < 1)) {
+      errors.push("classesPerGrade(학년별 반 수)가 없거나 잘못됐어요. 응모 칸의 반 보기를 만들려면 [2, 3, 5, ...]처럼 1 이상의 수로 적어 주세요.");
+    }
+  }
   const allOptions = STAGE.categories.flatMap((cat) => cat.options);
   Object.keys(STAGE.images || {}).forEach((value) => {
     if (!allOptions.includes(value)) errors.push(`images의 "${value}"가 어떤 options에도 없어요.`);
@@ -844,6 +850,23 @@ function resetEntry() {
   submit.disabled = false;
   submit.textContent = "제출하기";
   form.querySelectorAll("input, select, textarea").forEach((el) => (el.disabled = false));
+  fillClassOptions();   // 학년을 고르기 전에는 반 칸이 잠겨 있음
+}
+
+// 반 보기 목록: 고른 학년에 있는 반만 (stage.js classesPerGrade). 학년을 안 골랐으면 잠금
+function fillClassOptions() {
+  const grade = Number(document.getElementById("entry-grade").value);
+  const classes = STAGE.classesPerGrade || [];
+  const count = Number.isInteger(classes[grade - 1]) ? classes[grade - 1] : 0;
+  const select = document.getElementById("entry-class");
+  select.innerHTML = '<option value="">-</option>';
+  for (let i = 1; i <= count; i++) {
+    const option = select.appendChild(document.createElement("option"));
+    option.value = String(i);
+    option.textContent = String(i);
+  }
+  select.value = "";
+  select.disabled = !count;
 }
 
 async function submitEntry(event) {
@@ -861,8 +884,8 @@ async function submitEntry(event) {
     message.textContent = "다섯 칸을 모두 적어 주세요.";
     return;
   }
-  if (!/^\d+$/.test(entry.klass) || !/^\d+$/.test(entry.number)) {
-    message.textContent = "반과 번호는 숫자로 적어 주세요.";
+  if (!/^\d+$/.test(entry.number)) {   // 학년·반은 고르는 칸이라 검사하지 않음
+    message.textContent = "번호는 숫자로 적어 주세요.";
     return;
   }
 
@@ -888,6 +911,7 @@ async function submitEntry(event) {
 }
 
 document.getElementById("entry").addEventListener("submit", submitEntry);
+document.getElementById("entry-grade").addEventListener("change", fillClassOptions);
 document.getElementById("entry-reason").addEventListener("input", (event) => {
   document.getElementById("entry-count").textContent = `${event.target.value.length}/100`;
 });

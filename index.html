@@ -62,7 +62,12 @@
               <option>4</option><option>5</option><option>6</option>
             </select>
           </label>
-          <label>반 <input id="entry-class" inputmode="numeric" maxlength="2"></label>
+          <!-- 반 보기는 학년을 고르면 game.js가 stage.js의 classesPerGrade대로 채움 -->
+          <label>반
+            <select id="entry-class" disabled>
+              <option value="">-</option>
+            </select>
+          </label>
           <label>번호 <input id="entry-number" inputmode="numeric" maxlength="2"></label>
         </div>
         <label class="entry-wide">이름 <input id="entry-name" maxlength="10" autocomplete="off"></label>
