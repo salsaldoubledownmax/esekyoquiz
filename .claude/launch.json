@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "esekyoquiz",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/serve.js", ".", "4180"],
+      "port": 4180
+    }
+  ]
+}
