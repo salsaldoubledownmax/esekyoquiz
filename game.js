@@ -23,6 +23,10 @@ const HAIR_STYLES = [
 ];
 
 function avatarSVG(i) {
+  // stage.js의 avatars가 있으면 얼굴 대신 그 그림(예: 장소 그림)을 동그라미 안에
+  if (STAGE.avatars && STAGE.avatars[i]) {
+    return `<img class="avatar" src="${STAGE.avatars[i]}" alt="" style="background:${AVATAR_BGS[i % AVATAR_BGS.length]}">`;
+  }
   const hair = HAIR_COLORS[i % HAIR_COLORS.length];
   const style = HAIR_STYLES[i % HAIR_STYLES.length];
   const back = style.back.startsWith("<") ? style.back : style.back ? `<path d="${style.back}"/>` : "";
@@ -50,6 +54,18 @@ function valueHTML(value, withLabel) {
   return `<img class="value-img" src="${src}" alt="${value}">${label}`;
 }
 
+// 그림 밑 이름이 한 줄에 안 들어가면 글씨를 조금씩 줄여 한 줄에 맞춤(최소 10px)
+function fitLabels(root) {
+  root.querySelectorAll(".value-label").forEach((label) => {
+    label.style.fontSize = "";
+    let size = parseFloat(getComputedStyle(label).fontSize);
+    while (label.scrollWidth > label.clientWidth && size > 10) {
+      size -= 0.5;
+      label.style.fontSize = size + "px";
+    }
+  });
+}
+
 // 단서 문장 속 보기 이름: 그림 + 밑줄 + 행별 색
 const KEYWORD_COLORS = ["#d9822b", "#2f9e8f", "#3f72b8", "#b8487a", "#6a8f2a"];
 
@@ -68,6 +84,135 @@ function clueHTML(text) {
     const img = src ? `<img class="kw-img" src="${src}" alt="">` : "";
     return `<span class="kw" style="color:${KEYWORD_COLORS[rowOf[word] % KEYWORD_COLORS.length]}">${img}<u>${word}</u></span>`;
   });
+}
+
+// ----- 효과음 -----
+// 정답·오답·다 맞힘·폭죽은 sounds 폴더의 소리 파일. 원본이 커서 volume(0~1)으로 줄여서 냄
+// (원본 평균 세기를 재서 네 소리가 비슷한 크기로 들리게 맞춤. 더 줄이려면 숫자를 작게)
+// offset·length(초)가 있으면 그 부분만 냄 (wrong.mp3는 앞 0.65초가 조용해서 자르고, 0.5초만 낸 뒤 작아지며 끝)
+// 나머지(톡·찰칵·또로롱)와, 파일을 아직 못 읽었을 때는 브라우저가 직접 만든 소리
+const SOUND_FILES = {
+  correct: { src: "sounds/correct.mp3", volume: 0.12 },
+  wrong: { src: "sounds/wrong.mp3", volume: 0.12, offset: 0.65, length: 0.5 },
+  clear: { src: "sounds/finale.mp3", volume: 0.6 },
+  fireworks: { src: "sounds/confetti.mp3", volume: 0.8 },
+};
+const soundBuffers = {}; // kind → 읽어 둔 소리, 또는 "element"(file://로 열어 fetch가 안 될 때)
+let audio;
+
+// 처음 소리를 낼 때(시작하기 탭) 파일 네 개를 미리 읽어 둠
+function loadSoundFiles() {
+  Object.entries(SOUND_FILES).forEach(([kind, file]) => {
+    fetch(file.src)
+      .then((response) => response.arrayBuffer())
+      .then((data) => audio.decodeAudioData(data))
+      .then((buffer) => (soundBuffers[kind] = buffer))
+      .catch(() => (soundBuffers[kind] = "element"));
+  });
+}
+
+// 소리 파일로 냄. 아직 못 읽었으면 false (그때는 만든 소리로 대신)
+function playFile(kind, start, delay) {
+  const file = SOUND_FILES[kind];
+  const buffer = file && soundBuffers[kind];
+  if (!buffer) return false;
+  const offset = file.offset || 0;
+  if (buffer === "element") {
+    const element = new Audio(file.src);
+    element.volume = file.volume;
+    element.currentTime = offset;
+    setTimeout(() => element.play().catch(() => {}), delay * 1000);
+    if (file.length) setTimeout(() => element.pause(), (delay + file.length) * 1000);
+    return true;
+  }
+  const source = audio.createBufferSource();
+  const gain = audio.createGain();
+  source.buffer = buffer;
+  gain.gain.setValueAtTime(file.volume, start);
+  source.connect(gain).connect(audio.destination);
+  if (file.length) {
+    // 끝 0.12초 동안 작아지며 끝남(뚝 끊기는 소리 없게)
+    gain.gain.setValueAtTime(file.volume, start + file.length - 0.12);
+    gain.gain.linearRampToValueAtTime(0, start + file.length);
+    source.start(start, offset, file.length);
+  } else {
+    source.start(start, offset);
+  }
+  return true;
+}
+
+// 음 하나: freq Hz, start초에 시작해 length초 동안 작아지며 사라짐
+function tone(freq, start, length, type, volume) {
+  const osc = audio.createOscillator();
+  const gain = audio.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(volume, start + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
+  osc.connect(gain).connect(audio.destination);
+  osc.start(start);
+  osc.stop(start + length + 0.02);
+}
+
+// 펑: 짧은 잡음이 start초에 터져 length초 동안 작아짐 (폭죽 소리)
+function pop(start, length, volume) {
+  const buffer = audio.createBuffer(1, Math.ceil(audio.sampleRate * length), audio.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const source = audio.createBufferSource();
+  const filter = audio.createBiquadFilter();
+  const gain = audio.createGain();
+  source.buffer = buffer;
+  filter.type = "bandpass";
+  filter.frequency.value = 1200 + Math.random() * 1200;
+  gain.gain.setValueAtTime(volume, start);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
+  source.connect(filter).connect(gain).connect(audio.destination);
+  source.start(start);
+}
+
+// tap = 칸·버튼을 누를 때 짧은 "톡", correct = 정답일 때 올라가는 "띠링", wrong = 오답일 때 내려가는 "뚜둥",
+// unlock = 자물쇠가 열릴 때 "찰칵", line = 한 줄을 다 맞혔을 때 "또로롱", clear = 다 맞혔을 때 "빰빠밤",
+// fireworks = 축하 화면 폭죽 "펑 펑". delay초 뒤에 남
+function playSound(kind, delay = 0) {
+  try {
+    if (!audio) {
+      audio = new (window.AudioContext || window.webkitAudioContext)();
+      loadSoundFiles();
+    }
+    if (audio.state === "suspended") audio.resume();
+    const t = audio.currentTime + delay;
+    if (playFile(kind, t, delay)) return;
+    if (kind === "tap") tone(880, t, 0.07, "triangle", 0.06);
+    if (kind === "correct") {
+      tone(784, t, 0.15, "sine", 0.09);
+      tone(1047, t + 0.09, 0.15, "sine", 0.09);
+      tone(1319, t + 0.18, 0.35, "sine", 0.09);
+    }
+    if (kind === "wrong") {
+      tone(330, t, 0.16, "triangle", 0.12);
+      tone(220, t + 0.14, 0.3, "triangle", 0.12);
+    }
+    if (kind === "unlock") {
+      tone(1568, t, 0.05, "square", 0.025);
+      tone(2093, t + 0.08, 0.1, "square", 0.025);
+    }
+    if (kind === "line") {
+      [1047, 1319, 1568, 2093].forEach((freq, i) => tone(freq, t + i * 0.06, 0.12, "sine", 0.06));
+    }
+    if (kind === "clear") {
+      tone(523, t, 0.14, "triangle", 0.08);
+      tone(659, t + 0.13, 0.14, "triangle", 0.08);
+      tone(784, t + 0.26, 0.14, "triangle", 0.08);
+      tone(1047, t + 0.39, 0.6, "triangle", 0.08);
+    }
+    if (kind === "fireworks") {
+      [0, 0.35, 0.55, 1.0, 1.3].forEach((at) => pop(t + at, 0.25, 0.08));
+    }
+  } catch (error) {
+    // 소리를 못 내는 브라우저면 소리 없이 진행
+  }
 }
 
 let state;
@@ -109,6 +254,12 @@ function validateStage() {
       if (!inGrid(cell)) errors.push(`${i}번 단서의 cells [${cell}]가 격자 밖이에요.`);
     });
   });
+  if (STAGE.avatars && STAGE.avatars.length !== COLS) {
+    errors.push(`avatars의 그림 개수(${STAGE.avatars.length})가 people 수(${COLS})와 달라요.`);
+  }
+  if (STAGE.reveal && STAGE.reveal.length !== COLS) {
+    errors.push(`reveal의 이름 개수(${STAGE.reveal.length})가 people 수(${COLS})와 달라요.`);
+  }
   const allOptions = STAGE.categories.flatMap((cat) => cat.options);
   Object.keys(STAGE.images || {}).forEach((value) => {
     if (!allOptions.includes(value)) errors.push(`images의 "${value}"가 어떤 options에도 없어요.`);
@@ -267,7 +418,7 @@ function renderGrid() {
       inner.className = "cell-inner";
       if (state.filled[r][c]) {
         td.classList.add("filled");
-        inner.innerHTML = valueHTML(STAGE.answer[r][c]);
+        inner.innerHTML = valueHTML(STAGE.answer[r][c], STAGE.categories[r].label); // label: 칸에도 이름
       } else if (isLocked(r, c)) {
         // 자물쇠 숫자 = 앞으로 더 맞혀야 하는 칸 수
         td.classList.add("locked");
@@ -281,6 +432,7 @@ function renderGrid() {
       }
     }
   });
+  fitLabels(table);
 }
 
 function renderClues() {
@@ -340,6 +492,7 @@ function onCellTap(event) {
   const r = Number(td.dataset.r);
   const c = Number(td.dataset.c);
   if (isLocked(r, c) || state.opening.has(`${r},${c}`)) return;
+  playSound("tap");
   if (state.filled[r][c]) showName(r, c);
   else openPicker(r, c);
 }
@@ -401,6 +554,7 @@ function openPicker(r, c) {
     button.addEventListener("click", () => choose(r, c, value, button));
   });
   document.getElementById("picker").hidden = false;
+  fitLabels(pop);
   placePop(r, c);
 }
 
@@ -417,23 +571,24 @@ function choose(r, c, value, button) {
   const from = button && button.querySelector(".value-img") ? button.querySelector(".value-img").getBoundingClientRect() : null;
   closePicker();
   if (value === STAGE.answer[r][c]) {
+    playSound("correct");
     const before = correctCount();
     state.filled[r][c] = true;
     const after = before + 1;
     updateChecked(true);
     // 이번에 기준을 넘은 자물쇠: 약 0.8초 열리는 모션, 그동안 그 칸 탭 무시
     const current = state;
-    STAGE.locks
-      .filter((lock) => before < lock.at && lock.at <= after)
-      .forEach((lock) => {
-        const key = lock.cell.join(",");
-        state.opening.add(key);
-        setTimeout(() => {
-          if (state !== current) return; // 그 사이 다시 도전
-          state.opening.delete(key);
-          renderGrid();
-        }, 850);
-      });
+    const opening = STAGE.locks.filter((lock) => before < lock.at && lock.at <= after);
+    if (opening.length) playSound("unlock", 0.4); // 정답 "띠링" 뒤에 작게
+    opening.forEach((lock) => {
+      const key = lock.cell.join(",");
+      state.opening.add(key);
+      setTimeout(() => {
+        if (state !== current) return; // 그 사이 다시 도전
+        state.opening.delete(key);
+        renderGrid();
+      }, 850);
+    });
     render();
     // 정답 모션: 보기 자리에서 반짝 → 그림이 칸으로 날아감 → 칸에서 반짝·통통 + 자물쇠 흔들림
     const land = () => {
@@ -461,6 +616,7 @@ function choose(r, c, value, button) {
   }
 
   // 오답: 하트 -1, 칸은 빈 채로 테두리만 굵어지며 좌우로 흔들림
+  playSound("wrong");
   state.hearts -= 1;
   state.busy = true;
   renderHearts();
@@ -484,10 +640,14 @@ function bingo(r, c) {
         { duration: 420, delay: i * 90, easing: "ease-in-out" }
       );
     });
-  if (state.filled[r].every(Boolean)) {
+  const rowDone = state.filled[r].every(Boolean);
+  const colDone = state.filled.every((row) => row[c]);
+  if (state.filled.flat().every(Boolean)) playSound("clear");
+  else if (rowDone || colDone) playSound("line");
+  if (rowDone) {
     wave(STAGE.people.map((_, col) => pictureAt(r, col)));
   }
-  if (state.filled.every((row) => row[c])) {
+  if (colDone) {
     const face = document.querySelectorAll(".grid .person .avatar-wrap")[c];
     wave([face, ...STAGE.categories.map((_, row) => pictureAt(row, c))]);
   }
@@ -607,6 +767,7 @@ function showWin() {
   const heads = [...document.querySelectorAll(".grid .person")];
   panel.innerHTML = "";
   win.hidden = false;
+  playSound("fireworks");
 
   const confetti = document.getElementById("confetti");
   confetti.innerHTML = "";
@@ -624,6 +785,13 @@ function showWin() {
     card.className = "win-card";
     card.innerHTML = head.innerHTML;
     return card;
+  });
+  // stage.js의 reveal: 카드 밑에 진짜 이름(예: 장소 1 → 운동장)을 붙여 두었다가 제목과 함께 보여 줌
+  const reveals = (STAGE.reveal || []).map((name, i) => {
+    const label = cards[i].appendChild(document.createElement("em"));
+    label.className = "win-reveal";
+    label.textContent = name;
+    return label;
   });
   const stagger = 180;
   cards.forEach((card, i) => {
@@ -647,6 +815,7 @@ function showWin() {
 
   const landed = cards.length * stagger + 750;
   setTimeout(() => document.getElementById("win-title").classList.add("show"), landed);
+  reveals.forEach((label, i) => setTimeout(() => label.classList.add("show"), landed + 300 + i * 250));
   setTimeout(() => {
     document.getElementById("win-retry").classList.add("show");
     document.getElementById("entry").classList.add("show");
@@ -753,17 +922,24 @@ function showStart() {
 }
 
 document.getElementById("start-button").addEventListener("click", () => {
+  playSound("tap");
   const start = document.getElementById("start");
   start.classList.add("leaving");
   setTimeout(() => (start.hidden = true), 400);
 });
 
 document.getElementById("grid").addEventListener("click", onCellTap);
-document.getElementById("win-retry").addEventListener("click", () => reset(true));
+document.getElementById("win-retry").addEventListener("click", () => {
+  playSound("tap");
+  reset(true);
+});
 document.getElementById("picker").addEventListener("click", (event) => {
   if (event.target.id === "picker") closePicker(); // 바깥 탭
 });
-document.getElementById("retry").addEventListener("click", () => reset(true));
+document.getElementById("retry").addEventListener("click", () => {
+  playSound("tap");
+  reset(true);
+});
 
 // ----- 시작 -----
 const errors = validateStage();

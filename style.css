@@ -238,11 +238,12 @@ body {
 
 .value-label {
   display: block;
+  max-width: 100%;
   margin-top: 1px;
   font-size: 15px;
   font-weight: 700;
   line-height: 1.15;
-  word-break: keep-all;
+  white-space: nowrap; /* 한 줄. 길면 game.js fitLabels가 글씨를 줄임 */
 }
 
 /* 그림이 없는 값(예: "6살", "40년"): 크림색 알약 안에 글자 */
@@ -259,6 +260,10 @@ body {
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
+
+/* 격자 칸·보기 타일 안: 좌우 여백을 줄여 세 글자("운동장")가 한 줄에 들어가게 */
+.cell .value-text,
+.option .value-text { padding: 3px 5px; }
 
 /* 한 행을 다 맞히면 행 전체가 연두색 */
 .grid tr.done .row-head { background: var(--done-head); }
@@ -921,6 +926,20 @@ body {
 
 .win-card span { display: block; line-height: 1.2; }
 .win-card.hop { animation: hop 1.1s ease-in-out infinite; }
+
+/* 진짜 이름 알려 주기(stage.js reveal): 카드 밑 주황 글씨가 하나씩 톡 튀어나옴 */
+.win-reveal {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  font-style: normal;
+  line-height: 1.2;
+  color: #e0752d;
+  word-break: keep-all;
+  opacity: 0;
+}
+
+.win-reveal.show { animation: title-pop 0.5s ease-out forwards; }
 
 .win-retry { opacity: 0; }
 .win-retry.show { animation: fade-in 0.4s ease-out forwards; }
