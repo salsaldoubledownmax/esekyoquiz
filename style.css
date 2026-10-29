@@ -1163,3 +1163,44 @@ body {
   font-size: 18px;
   line-height: 1.5;
 }
+
+/* ===== 화면이 낮은 휴대폰 (아이폰 사파리처럼 위아래 막대가 화면을 먹을 때) =====
+   아래 단서 칸은 남는 높이를 받아 쓰기 때문에, 위쪽(제목·격자)이 크면 단서 카드가 잘린다.
+   그래서 화면이 낮으면 제목·하트·격자를 조금씩 줄여 단서 카드 한 장이 다 보이게 한다.
+   격자 한 칸(--row-h)은 그림(--pic) + 이름 한 줄이 들어갈 만큼은 남겨야 한다. */
+@media (max-height: 700px) {
+  :root {
+    --row-h: 64px;
+    --pic: 42px;
+    --face: 50px;
+  }
+
+  .top { padding: 6px 16px 2px; }
+  .top h1 { margin-bottom: 4px; padding: 3px 14px; font-size: 19px; }
+  .heart { width: 29px; height: 29px; }
+  .board { padding: 2px 12px; }
+
+  .clue-bar { padding: 4px 16px; }
+  .clue-count { padding: 4px 14px; font-size: 15px; }
+
+  .clue {
+    min-height: 48px;
+    margin-bottom: 6px;
+    padding: 10px 10px 10px 40px;
+    font-size: 17px;
+  }
+  .clue .tab { left: 8px; top: 10px; }
+}
+
+@media (max-height: 620px) {
+  :root {
+    --row-h: 58px;
+    --pic: 36px;
+    --face: 44px;
+  }
+
+  .grid .person { padding: 6px 2px 3px; font-size: 15px; }
+  .grid .row-head { font-size: 14px; }
+  .value-label { font-size: 14px; }
+  .clue { font-size: 16px; }
+}
